@@ -115,9 +115,11 @@ function i18n.get_context_locale()
 end
 
 function i18n.with_locale(locale, fnc)
+    local prev = config.context_locale
+
     config.context_locale = locale
     fnc(i18n.get())
-    config.context_locale = nil
+    config.context_locale = prev
 end
 
 function i18n.set_fallback_function(fnc)
