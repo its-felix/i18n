@@ -43,13 +43,18 @@ for _, locale in ipairs(i18n.locales) do
 end
 ```
 
-## Step 5: Load your locale files
+## Step 5: Define a default locale
+```lua
+i18n.set_default_locale(i18n.locale.EN)
+```
+
+## Step 6: Load your locale files
 ```lua
 i18n.load_file("locale_de.lua", i18n.locale.DE)
 i18n.load_file("locale_en.lua", i18n.locale.EN)
 ```
 
-## Step 6: Use your locale
+## Step 7: Use your locale
 ```lua
 i18n.get()-- if no locale is given, returns the locale table for the default locale
 i18n.get(i18n.locale.DE)-- pass any locale to access the locale table for that locale
@@ -59,5 +64,37 @@ i18n.with_locale(i18n.locale.DE, function(locale_tbl)
     print(locale_tbl.GREET)-- prints "Hallo"
     print(i18n.get().GREET)-- prints "Hallo" -> the function is executed with a context locale
     print(i18n.get(i18n.locale.EN).GREET)-- prints "Hello" -> an explicit locale was given
+end)
+```
+
+## More
+```lua
+-- get the default locale
+i18n.get_default_locale()
+
+-- get the current context locale (only set during the execution of a i18n.with_locale function)
+i18n.get_context_locale()
+
+-- get the current active locale (context_locale if set, else default_locale)
+i18n.locale()
+
+--[[
+if you try to access a key which is not defined in the requested locale
+the library tries to find the requested key in the default locale (if youre not already using the default locale)
+]]
+i18n.get(i18n.locale.DE).SOME_KEY_THAT_IS_ONLY_DEFINED_IN_EN
+
+--[[
+if you try to access a key which is neither defined in the request locale
+nor in the default locale, the requested key will be returned
+]]
+print(i18n.get().SOME_KEY_THAT_IS_NOT_DEFINED)-- prints "SOME_KEY_THAT_IS_NOT_DEFINED"
+
+-- you can define that behaviour by setting a fallback function
+i18n.set_fallback_function(function(locale, requested_key_path)
+    -- locale is the current locale
+    -- requested_key_path is a table containing the path which you tried to access
+
+    return "Your fallback value"
 end)
 ```
