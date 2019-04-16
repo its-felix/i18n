@@ -86,9 +86,12 @@ i18n.get(i18n.locale.DE).SOME_KEY_THAT_IS_ONLY_DEFINED_IN_EN
 
 --[[
 if you try to access a key which is neither defined in the request locale
-nor in the default locale, the requested key will be returned
+nor in the default locale, a dummy table representing that key is returned
+calling tostring (explicit or implicit via print etc.) on that table will give you a string representation of the requested key
 ]]
+print(type(i18n.get().SOME_KEY_THAT_IS_NOT_DEFINED))-- prints "table"
 print(i18n.get().SOME_KEY_THAT_IS_NOT_DEFINED)-- prints "SOME_KEY_THAT_IS_NOT_DEFINED"
+print(i18n.get().SOME_KEY_THAT_IS_NOT_DEFINED.SUB_KEY)-- prints "SOME_KEY_THAT_IS_NOT_DEFINED.SUB_KEY"
 
 -- you can define that behaviour by setting a fallback function
 i18n.set_fallback_function(function(locale, requested_key_path)
