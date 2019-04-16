@@ -9,7 +9,7 @@ i18n.with_locale(i18n.locale.DE, function()
     print(i18n.get().TEST)
     print(i18n.get().ONLY_IN_EN.TEST)
     print(i18n.get().ONLY_IN_EN.TEST2)
-    print(i18n.get().UNCONFIGURED_KEY)
+    print(i18n.get().UNCONFIGURED_KEY.SUB_KEY)
 
     i18n.with_locale(i18n.locale.EN, function()
         print("Should be EN", i18n.get().GREET)

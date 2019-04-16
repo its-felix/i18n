@@ -1,10 +1,57 @@
+local function read_only(index, call, tostring)
+    return setmetatable({}, {
+        __newindex = function() end,
+        __index = index,
+        __call = call,
+        __tostring = tostring,
+        __metatable = false
+    })
+end
+
+local function join(values, delimiter)
+    local str = ""
+
+    for _, v in ipairs(values) do
+        str = str .. delimiter .. v
+    end
+
+    return string.sub(str, string.len(delimiter) + 1)
+end
+
+local function copy_itable(tbl, append_value)
+    local copy = {}
+
+    for i, v in ipairs(tbl) do
+        table.insert(copy, v)
+    end
+
+    if append_value then
+        table.insert(copy, append_value)
+    end
+
+    return copy
+end
+
+local function create_unpresent_key_table(key_path)
+    local key_path_str = join(key_path, ".")
+
+    return read_only(
+        function(tbl, requested_key)
+            return create_unpresent_key_table(copy_itable(key_path, requested_key))
+        end,
+        nil,
+        function()
+            return key_path_str
+        end
+    )
+end
+
 local translations = {}
 local config = {
     default_locale = nil,
     context_locale = nil,
     fallback_function = function(locale, requested_key_path)
         local result = nil
-        local key_path_str = ""
         local default_locale = i18n.get_default_locale()
     
         -- fallback should always look into the default locale and never in the context locale
@@ -16,27 +63,24 @@ local config = {
             local key_path_resolved = true
             
             for _, key in ipairs(requested_key_path) do
-                if key_path_resolved then
-                    if temp and type(temp) == "table" then
-                        temp = temp[key]
-                    else
-                        key_path_resolved = false
-                    end
+                if temp and type(temp) == "table" then
+                    temp = temp[key]
+                else
+                    key_path_resolved = false
+                    break
                 end
-    
-                key_path_str = key_path_str .. "." .. key
             end
     
             if key_path_resolved then
                 result = temp
             end
-        else
-            for _, key in ipairs(requested_key_path) do
-                key_path_str = key_path_str .. "." .. key
-            end
+        end
+
+        if not result then
+            result = create_unpresent_key_table(requested_key_path)
         end
     
-        return result or string.sub(key_path_str, 2)
+        return result
     end,
     locales = {},
     locales_by_id = {},
@@ -44,37 +88,9 @@ local config = {
     locales_by_name = {}
 }
 
-local function read_only(tbl)
-    return setmetatable({}, {
-        __newindex = function() end,
-        __index = tbl,
-        __metatable = false
-    })
-end
-
-local function copy_itable(tbl1, tbl2)
-    local copy = {}
-
-    for i, v in ipairs(tbl1) do
-        table.insert(copy, v)
-    end
-
-    if tbl2 then
-        for i, v in ipairs(tbl2) do
-            table.insert(copy, v)
-        end
-    end
-
-    return copy
-end
-
 i18n = {}
-i18n.locale = {}
-i18n.locales = read_only(config.locales)
-
-setmetatable(i18n.locale, {
-    __newindex = function(tbl, k, v) end,
-    __index = function(tbl, k)
+i18n.locale = read_only(
+    function(tbl, k)
         local t = type(k)
         if t == "number" then
             return config.locales_by_id[k] or i18n.locale()
@@ -84,11 +100,11 @@ setmetatable(i18n.locale, {
             return i18n.locale()
         end
     end,
-    __call = function()
+    function()
         return i18n.get_context_locale() or i18n.get_default_locale()
-    end,
-    __metatable = false
-})
+    end
+)
+i18n.locales = read_only(config.locales)
 
 function i18n.get(locale)
     if not locale then
@@ -157,22 +173,18 @@ function i18n.load_file(file, locale)
             local copy = {}
 
             for k, v in pairs(value) do
-                copy[k] = build(v, copy_itable(key_path, {k}))
+                copy[k] = build(v, copy_itable(key_path, k))
             end
 
-            value = setmetatable({}, {
-                __newindex = function() end,
-                __index = function(tbl, requested_key)
-                    local result = copy[requested_key]
+            value = read_only(function(tbl, requested_key)
+                local result = copy[requested_key]
 
-                    if not result then
-                        result = config.fallback_function(locale, copy_itable(key_path, {requested_key}))
-                    end
+                if not result then
+                    result = config.fallback_function(locale, copy_itable(key_path, requested_key))
+                end
 
-                    return result
-                end,
-                __metatable = false
-            })
+                return result
+            end)
         end
 
         return value
